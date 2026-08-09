@@ -20,23 +20,20 @@ def init_ee():
     try:
         if "EE_SERVICE_ACCOUNT_JSON" in st.secrets:
             secret_value = st.secrets["EE_SERVICE_ACCOUNT_JSON"]
-            
-            # Parse string or dict based on TOML formatting
-            if isinstance(secret_value, str):
-                service_account_info = json.loads(secret_value)
-            else:
-                service_account_info = dict(secret_value)
+            service_account_info = json.loads(secret_value) if isinstance(secret_value, str) else dict(secret_value)
 
-            # FIX: Ensure private_key processes newlines correctly
+            # Fix private key newline formatting
             if "private_key" in service_account_info:
                 service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
 
+            # Initialize credentials with explicit project scope
             credentials = ee.ServiceAccountCredentials(
                 service_account_info["client_email"],
                 key_data=json.dumps(service_account_info)
             )
-            # Authenticate AND attach project ID
-            ee.Initialize(credentials, project='ai4nature')
+            
+            # CRITICAL: Project ID must be explicitly passed here
+            ee.Initialize(credentials=credentials, project='ai4nature')
         else:
             ee.Initialize(project='ai4nature')
             
