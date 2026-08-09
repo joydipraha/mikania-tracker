@@ -18,24 +18,28 @@ def init_ee():
      #   ee.Authenticate()
       #  ee.Initialize(project='ai4nature')
     try:
-        # Check Streamlit Secrets first
         if "EE_SERVICE_ACCOUNT_JSON" in st.secrets:
             secret_value = st.secrets["EE_SERVICE_ACCOUNT_JSON"]
             
-            # Parse string or dict based on how TOML was structured
+            # Parse string or dict based on TOML formatting
             if isinstance(secret_value, str):
                 service_account_info = json.loads(secret_value)
             else:
                 service_account_info = dict(secret_value)
-            
+
+            # FIX: Ensure private_key processes newlines correctly
+            if "private_key" in service_account_info:
+                service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
+
             credentials = ee.ServiceAccountCredentials(
                 service_account_info["client_email"],
                 key_data=json.dumps(service_account_info)
             )
+            # Authenticate AND attach project ID
             ee.Initialize(credentials, project='ai4nature')
         else:
-            # Local fallback (for running locally via gcloud / default auth)
             ee.Initialize(project='ai4nature')
+            
     except Exception as e:
         st.error(f"Failed to initialize Google Earth Engine: {e}")
         st.stop()
