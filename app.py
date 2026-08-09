@@ -5,18 +5,39 @@ from streamlit_folium import st_folium
 
 # Page setup
 st.set_page_config(layout="wide", page_title="Mikania & Hydro Risk Tracker")
-st.title("🌿 Mikania Invasion & River Anomaly Tracker — Gorumara")
+st.title("🌿 Mikania Invasion & River Anomaly Tracker — Gorumara National Park")
 st.caption("Integrated Earth Observation for Invasive Species, Hydrological Anomalies, and Human-Wildlife Conflict Prediction")
 
 # 1. Initialize Earth Engine
 @st.cache_resource
 def init_ee():
+    #try:
+     #   ee.Initialize(project='ai4nature')
+    #except Exception:
+     #   ee.Authenticate()
+      #  ee.Initialize(project='ai4nature')
     try:
-        ee.Initialize(project='ai4nature')
-    except Exception:
-        ee.Authenticate()
-        ee.Initialize(project='ai4nature')
-
+        # Check Streamlit Secrets first
+        if "EE_SERVICE_ACCOUNT_JSON" in st.secrets:
+            secret_value = st.secrets["EE_SERVICE_ACCOUNT_JSON"]
+            
+            # Parse string or dict based on how TOML was structured
+            if isinstance(secret_value, str):
+                service_account_info = json.loads(secret_value)
+            else:
+                service_account_info = dict(secret_value)
+            
+            credentials = ee.ServiceAccountCredentials(
+                service_account_info["client_email"],
+                key_data=json.dumps(service_account_info)
+            )
+            ee.Initialize(credentials, project='ai4nature')
+        else:
+            # Local fallback (for running locally via gcloud / default auth)
+            ee.Initialize(project='ai4nature')
+    except Exception as e:
+        st.error(f"Failed to initialize Google Earth Engine: {e}")
+        st.stop()
 init_ee()
 
 # 2. Folium Layer Helper
