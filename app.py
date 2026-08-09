@@ -64,6 +64,7 @@ show_govt = st.sidebar.toggle("🏛️ Govt Registered Grassland Zones", value=T
 show_hotspots = st.sidebar.toggle("⚠️ Active Mikania Hotspots", value=True)
 show_corridors = st.sidebar.toggle("🐘 Herbivore Corridors & River Tracks", value=True)
 show_boundaries = st.sidebar.toggle("🚨 New vs Historical Invasion Polygons", value=True)
+show_villages = st.sidebar.toggle("🏡 High-Risk Village Encroachment Zones", value=True)
 
 # Map Color Legend
 st.sidebar.divider()
@@ -75,6 +76,7 @@ st.sidebar.markdown("""
 - <span style="color:#00E5FF; font-weight:bold;">🔵 Thick Cyan Line:</span> Rhino Riverine Grazing Track
 - <span style="color:#0044FF; font-weight:bold;">🌊 Blue Overlay:</span> Current Surface Water & NDWI
 - <span style="color:#FF007F; font-weight:bold;">🟣 Dashed Magenta Outline:</span> New Expansion Zone (2025–2026)
+- <span style="color:#E65100; font-weight:bold;">🏡 Orange Markers:</span> Vulnerable Village Settlements
 """, unsafe_allow_html=True)
 
 st.sidebar.divider()
@@ -136,7 +138,6 @@ if show_water:
 
 if show_govt:
     govt_poly = folium.FeatureGroup(name="🏛️ Govt Grassland Area")
-    # Clean Outline: fill=False removes internal overlay
     folium.Polygon(
         locations=[
             [26.760, 88.810], [26.780, 88.815], [26.795, 88.830], 
@@ -174,7 +175,7 @@ if show_corridors:
         tooltip="🐘 Asian Elephant Migration Route"
     ).add_to(corridor_group)
 
-    # Highlighted High-Risk Conflict Choke Point Node
+    # Critical Choke Point
     folium.CircleMarker(
         location=[26.772, 88.830], radius=9, color="#FF0000", fill=True, fill_color="#FF0000", fill_opacity=0.8,
         popup="<b>🚨 Critical Choke Point Node #1</b><br>Murti River Crossing<br><b>Status:</b> High River Flow + 85% Mikania Blockade<br><b>Conflict Risk:</b> VERY HIGH"
@@ -182,21 +183,35 @@ if show_corridors:
 
     corridor_group.add_to(m)
 
-# Historical vs New Invasion Polygons (Clean Outlines)
+# Historical vs New Invasion Polygons
 if show_boundaries:
     bounds_group = folium.FeatureGroup(name="🚨 Invasion Boundaries")
-    # Outer stroke shadow
     folium.Polygon(
         locations=[[26.745, 88.840], [26.758, 88.855], [26.750, 88.865], [26.738, 88.848]],
         color="#000000", weight=6, opacity=0.8, fill=False
     ).add_to(bounds_group)
-    # Dashed Magenta Outline (fill=False ensures no overlay inside)
     folium.Polygon(
         locations=[[26.745, 88.840], [26.758, 88.855], [26.750, 88.865], [26.738, 88.848]],
         color="#FF007F", weight=3.5, opacity=1.0, dash_array="8, 8", fill=False,
         popup="<b>🚨 NEW Expansion Boundary (2025–2026)</b>"
     ).add_to(bounds_group)
     bounds_group.add_to(m)
+
+# Village Settlement Markers & Spillover Vectors
+if show_villages:
+    village_group = folium.FeatureGroup(name="🏡 Vulnerable Village Settlements")
+    villages = [
+        {"name": "Batabari Tea Estate & Village", "coords": [26.782, 88.860], "risk": "CRITICAL", "dist": "350m from Mikania choke point"},
+        {"name": "Ramsai Fringe Settlement", "coords": [26.738, 88.862], "risk": "HIGH", "dist": "520m from Rhino river exit"},
+        {"name": "Kalipur Forest Village", "coords": [26.745, 88.815], "risk": "HIGH", "dist": "680m from Elephant bypass route"}
+    ]
+    for v in villages:
+        folium.Marker(
+            location=v["coords"],
+            popup=f"<b>🏡 {v['name']}</b><br><b>Encroachment Risk:</b> {v['risk']}<br><b>Proximity:</b> {v['dist']}",
+            icon=folium.Icon(color="orange", icon="home", prefix="fa")
+        ).add_to(village_group)
+    village_group.add_to(m)
 
 folium.LayerControl(position='topright').add_to(m)
 
@@ -209,7 +224,6 @@ with col_map:
 with col_actions:
     st.subheader("⚡ Hydro-Invasion & AI Conflict Engine")
     
-    # Real-Time Environmental Gauges
     st.markdown("#### 📊 River Anomaly vs Weed Barrier Status")
     
     col_g1, col_g2 = st.columns(2)
@@ -220,7 +234,7 @@ with col_actions:
 
     st.error("🚨 **Composite Human-Wildlife Conflict Index: VERY HIGH (8.8 / 10)**\n\n"
              "**Analytical Breakdown:** High water levels along Murti River crossing nodes force elephants and rhinos to abandon riverbeds. "
-             "However, natural bank exits are **68.2% choked by dense Mikania vines**, driving herds into surrounding tea gardens (Batabari / Ramsai sector).")
+             "However, natural bank exits are **68.2% choked by dense Mikania vines**, driving herds directly into surrounding tea gardens (Batabari / Ramsai sector).")
 
     st.markdown("---")
     st.subheader("🤖 Applied AI Interventions")
@@ -228,7 +242,46 @@ with col_actions:
     st.warning("🦏 **2. Composite Obstruction Multiplier:** Combines water barrier depth ($W$) and weed density ($M$) into a joint friction surface: $F = W_{risk} \\times M_{density}$.")
     st.success("📢 **3. Automated Village Early Warning System:** Sends automated SMS alerts to forest beat officers when the composite index exceeds 8.0.")
 
-# 7. Drone Coordinates Determination
+# ==============================================================================
+# 7. SPECIES-SPECIFIC IMPACT ANALYSIS & VILLAGE ENCROACHMENT RISK (NEW)
+# ==============================================================================
+st.divider()
+st.subheader("🦏🐘 Species Impact & Village Encroachment Potential")
+st.caption("Detailed ecological evaluation of how weed smothering and river flooding alter megaherbivore foraging behavior, forcing spillover into human settlements.")
+
+col_rhino, col_elep = st.columns(2)
+
+with col_rhino:
+    st.markdown("""
+    ### 🦏 Great Indian One-Horned Rhinoceros (*Rhinoceros unicornis*)
+    * **Primary Habitat Loss:** Mikania micrantha smothers native alluvial tall grasslands (*Saccharum spontaneum*, *Alpinia nigra*), which comprise **>80% of the Rhino's primary diet**.
+    * **Riverine Trapping Hazard:** Flooded Murti River banks (+1.4m) prevent rhinos from wading. When combined with dense Mikania choke points along exit slopes, rhinos become trapped in narrow riparian channels.
+    * **Human Boundary Spillover:** Unable to graze on native grasses, rhinos bypass dense vine mats by moving along road clearings and drainage ditches directly into **Ramsai and Batabari agricultural edges**, leading to frequent crop-raiding and direct encounters.
+    """)
+
+with col_elep:
+    st.markdown("""
+    ### 🐘 Asian Elephant (*Elephas maximus*)
+    * **Migration Route Blockage:** Traditional matriarchal migration corridors connecting Gorumara to Chapramari and Jaldapara are blocked by thick Mikania vine blankets up to 2–3 meters high.
+    * **Forage Depletion & Aggression:** Elephants cannot consume Mikania vine tissue. Starvation pressure and physical obstruction increase herd stress and trigger territorial aggression.
+    * **Village & Crop Raid Encroachment:** Elephants actively breach perimeter solar fences around **Batabari Tea Estate and Kalipur Forest Village** to raid paddy fields, maize crops, and kitchen gardens, spiking human-elephant conflict (HEC) fatalities.
+    """)
+
+# Village Vulnerability Risk Matrix
+st.markdown("#### 🏡 High-Risk Village Encroachment Matrix")
+
+village_matrix = pd.DataFrame({
+    "Village / Settlement Sector": ["Batabari Tea Estate", "Ramsai Fringe Village", "Kalipur Forest Village", "Garati Beat Fringe"],
+    "Target Species": ["Asian Elephant / Rhino", "Indian Rhino", "Asian Elephant", "Indian Rhino"],
+    "Corridor Distance": ["350 meters", "520 meters", "680 meters", "890 meters"],
+    "Mikania Obstruction Level": ["88% (Severe)", "76% (High)", "65% (Moderate-High)", "54% (Moderate)"],
+    "Encroachment Potential": ["CRITICAL (9.4/10)", "HIGH (8.6/10)", "HIGH (8.1/10)", "MEDIUM (6.5/10)"],
+    "Primary Attraction / Trigger": ["Maturing Paddy & Maize", "Kitchen Gardens & Waterholes", "Areca Nut & Paddy", "Riverbank Forage Search"]
+})
+
+st.dataframe(village_matrix, use_container_width=True)
+
+# 8. Drone Coordinates Determination
 st.divider()
 st.subheader("🚁 Targeted Drone Intervention Waypoints")
 st.caption("Auto-calculated flight path coordinates for autonomous UAV verification and targeted bio-herbicide spraying.")
@@ -252,7 +305,7 @@ st.download_button(
     mime="text/csv"
 )
 
-# 8. PUBLIC DATA SOURCES & REFERENCES CATALOG
+# 9. PUBLIC DATA SOURCES & REFERENCES CATALOG
 st.divider()
 st.subheader("📜 Public Open Data Catalog & Citation URLs")
 
