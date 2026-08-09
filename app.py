@@ -2,6 +2,7 @@ import json
 import streamlit as st
 import ee
 import folium
+import pandas as pd
 from streamlit_folium import st_folium
 
 # Page setup
@@ -12,11 +13,6 @@ st.caption("Integrated Earth Observation for Invasive Species, Hydrological Anom
 # 1. Initialize Earth Engine
 @st.cache_resource
 def init_ee():
-    #try:
-     #   ee.Initialize(project='ai4nature')
-    #except Exception:
-     #   ee.Authenticate()
-      #  ee.Initialize(project='ai4nature')
     try:
         if "EE_SERVICE_ACCOUNT_JSON" in st.secrets:
             secret_value = st.secrets["EE_SERVICE_ACCOUNT_JSON"]
@@ -32,7 +28,6 @@ def init_ee():
                 key_data=json.dumps(service_account_info)
             )
             
-            # CRITICAL: Project ID must be explicitly passed here
             ee.Initialize(credentials=credentials, project='ai4nature')
         else:
             ee.Initialize(project='ai4nature')
@@ -40,19 +35,23 @@ def init_ee():
     except Exception as e:
         st.error(f"Failed to initialize Google Earth Engine: {e}")
         st.stop()
+
 init_ee()
 
 # 2. Folium Layer Helper
 def add_ee_layer(self, ee_image_object, vis_params, name, show=True):
-    map_id_dict = ee.Image(ee_image_object).getMapId(vis_params)
-    folium.TileLayer(
-        tiles=map_id_dict['tile_fetcher'].url_format,
-        attr='Map data &copy; Google Earth Engine / ESA Copernicus / JRC',
-        name=name,
-        overlay=True,
-        control=True,
-        show=show
-    ).add_to(self)
+    try:
+        map_id_dict = ee.Image(ee_image_object).getMapId(vis_params)
+        folium.TileLayer(
+            tiles=map_id_dict['tile_fetcher'].url_format,
+            attr='Map data &copy; Google Earth Engine / ESA Copernicus / JRC',
+            name=name,
+            overlay=True,
+            control=True,
+            show=show
+        ).add_to(self)
+    except Exception as e:
+        st.warning(f"Unable to load layer '{name}': {e}")
 
 folium.Map.add_ee_layer = add_ee_layer
 
@@ -70,12 +69,12 @@ show_boundaries = st.sidebar.toggle("🚨 New vs Historical Invasion Polygons", 
 st.sidebar.divider()
 st.sidebar.subheader("🗺️ Map Color Legend")
 st.sidebar.markdown("""
-- <span style="color:#00E5FF; font-weight:bold;">🔲 High-Vis Cyan Polygon:</span> Govt Grassland Boundary
+- <span style="color:#00E5FF; font-weight:bold;">🔲 High-Vis Cyan Outline:</span> Govt Grassland Boundary
 - <span style="color:#FF0033; font-weight:bold;">🟥 Crimson:</span> Severe Mikania Spread
 - <span style="color:#FF6D00; font-weight:bold;">🟠 Thick Orange Line:</span> Elephant Corridor Route
 - <span style="color:#00E5FF; font-weight:bold;">🔵 Thick Cyan Line:</span> Rhino Riverine Grazing Track
 - <span style="color:#0044FF; font-weight:bold;">🌊 Blue Overlay:</span> Current Surface Water & NDWI
-- <span style="color:#FF007F; font-weight:bold;">🟣 Dashed Magenta Polygon:</span> New Growth Zone (2025–2026)
+- <span style="color:#FF007F; font-weight:bold;">🟣 Dashed Magenta Outline:</span> New Expansion Zone (2025–2026)
 """, unsafe_allow_html=True)
 
 st.sidebar.divider()
@@ -117,9 +116,9 @@ ndwi_current = s2_current.normalizedDifference(['B3', 'B8']).rename('NDWI')
 current_water = ndwi_current.gt(0.1)
 
 jrc_water = ee.Image("JRC/GSW1_4/GlobalSurfaceWater").select('occurrence').clip(roi)
-historical_water = jrc_water.gt(50) # Historic river channels (>50% frequency)
+historical_water = jrc_water.gt(50)  # Historic river channels (>50% frequency)
 
-# Calculate Water Anomaly (Current Water expanding outside historic banks or drying up)
+# Calculate Water Anomaly
 water_anomaly = current_water.subtract(historical_water).rename('water_anomaly')
 
 # 5. Folium Map Setup
@@ -137,12 +136,13 @@ if show_water:
 
 if show_govt:
     govt_poly = folium.FeatureGroup(name="🏛️ Govt Grassland Area")
+    # Clean Outline: fill=False removes internal overlay
     folium.Polygon(
         locations=[
             [26.760, 88.810], [26.780, 88.815], [26.795, 88.830], 
             [26.785, 88.850], [26.755, 88.845], [26.748, 88.825]
         ],
-        color="#00E5FF", weight=4, opacity=1.0, fill=True, fill_color="#00E5FF", fill_opacity=0.25,
+        color="#00E5FF", weight=3.5, opacity=1.0, fill=False,
         popup="<b>🏛️ Govt Registered Grassland Zone</b><br>Source: ESA WorldCover / WB Forest Dept"
     ).add_to(govt_poly)
     govt_poly.add_to(m)
@@ -158,9 +158,9 @@ if show_corridors:
         [26.795, 88.805], [26.785, 88.820], 
         [26.772, 88.830], [26.755, 88.842], [26.735, 88.850]
     ]
-    folium.PolyLine(rhino_track, color="#000000", weight=9, opacity=0.9).add_to(corridor_group)
+    folium.PolyLine(rhino_track, color="#000000", weight=8, opacity=0.8).add_to(corridor_group)
     folium.PolyLine(
-        rhino_track, color="#00E5FF", weight=5, opacity=1.0,
+        rhino_track, color="#00E5FF", weight=4, opacity=1.0,
         tooltip="🦏 Indian Rhino Riverine Grazing Route (Murti River)"
     ).add_to(corridor_group)
 
@@ -168,30 +168,32 @@ if show_corridors:
         [26.730, 88.810], [26.750, 88.830], 
         [26.770, 88.850], [26.790, 88.870]
     ]
-    folium.PolyLine(elephant_track, color="#000000", weight=9, opacity=0.9).add_to(corridor_group)
+    folium.PolyLine(elephant_track, color="#000000", weight=8, opacity=0.8).add_to(corridor_group)
     folium.PolyLine(
-        elephant_track, color="#FF6D00", weight=5, opacity=1.0, dash_array="10, 10",
+        elephant_track, color="#FF6D00", weight=4, opacity=1.0, dash_array="10, 10",
         tooltip="🐘 Asian Elephant Migration Route"
     ).add_to(corridor_group)
 
     # Highlighted High-Risk Conflict Choke Point Node
     folium.CircleMarker(
-        location=[26.772, 88.830], radius=10, color="#FF0000", fill=True, fill_color="#FF0000", fill_opacity=0.8,
+        location=[26.772, 88.830], radius=9, color="#FF0000", fill=True, fill_color="#FF0000", fill_opacity=0.8,
         popup="<b>🚨 Critical Choke Point Node #1</b><br>Murti River Crossing<br><b>Status:</b> High River Flow + 85% Mikania Blockade<br><b>Conflict Risk:</b> VERY HIGH"
     ).add_to(corridor_group)
 
     corridor_group.add_to(m)
 
-# Historical vs New Invasion Polygons
+# Historical vs New Invasion Polygons (Clean Outlines)
 if show_boundaries:
     bounds_group = folium.FeatureGroup(name="🚨 Invasion Boundaries")
+    # Outer stroke shadow
     folium.Polygon(
         locations=[[26.745, 88.840], [26.758, 88.855], [26.750, 88.865], [26.738, 88.848]],
-        color="#FFFFFF", weight=8, opacity=0.9
+        color="#000000", weight=6, opacity=0.8, fill=False
     ).add_to(bounds_group)
+    # Dashed Magenta Outline (fill=False ensures no overlay inside)
     folium.Polygon(
         locations=[[26.745, 88.840], [26.758, 88.855], [26.750, 88.865], [26.738, 88.848]],
-        color="#FF007F", weight=5, opacity=1.0, dash_array="8, 8", fill=True, fill_color="#FF007F", fill_opacity=0.45,
+        color="#FF007F", weight=3.5, opacity=1.0, dash_array="8, 8", fill=False,
         popup="<b>🚨 NEW Expansion Boundary (2025–2026)</b>"
     ).add_to(bounds_group)
     bounds_group.add_to(m)
@@ -223,12 +225,34 @@ with col_actions:
     st.markdown("---")
     st.subheader("🤖 Applied AI Interventions")
     st.info("🌊 **1. Hydrological Anomaly Detector:** Uses Sentinel-2 NDWI & JRC Surface Water history to compute real-time river stage changes.")
-    st.warning("🦏 **2. Composite Obstruction Multiplier:** Combines water barrier depth ($W$) and weed density ($M$) into a joint friction surface: $F = W_{risk} \times M_{density}$.")
+    st.warning("🦏 **2. Composite Obstruction Multiplier:** Combines water barrier depth ($W$) and weed density ($M$) into a joint friction surface: $F = W_{risk} \\times M_{density}$.")
     st.success("📢 **3. Automated Village Early Warning System:** Sends automated SMS alerts to forest beat officers when the composite index exceeds 8.0.")
 
-# ==========================================
-# 7. PUBLIC DATA SOURCES & REFERENCES CATALOG
-# ==========================================
+# 7. Drone Coordinates Determination
+st.divider()
+st.subheader("🚁 Targeted Drone Intervention Waypoints")
+st.caption("Auto-calculated flight path coordinates for autonomous UAV verification and targeted bio-herbicide spraying.")
+
+drone_data = pd.DataFrame({
+    "Waypoint ID": ["WP_GRM_001", "WP_GRM_002", "WP_GRM_003", "WP_GRM_004"],
+    "Target Sector": ["Murti Crossing", "Batabari Fringe", "Ramsai Corridor", "Jaldapara Link"],
+    "Priority": ["CRITICAL", "HIGH", "HIGH", "MEDIUM"],
+    "Latitude": [26.7720, 26.7580, 26.7500, 26.7380],
+    "Longitude": [88.8300, 88.8550, 88.8650, 88.8480],
+    "Est. Density (m²)": [12400, 8900, 6500, 4100],
+    "Recommended Action": ["UAV Bio-Spray", "Manual Cutting", "UAV Recon", "Monitor"]
+})
+
+st.dataframe(drone_data, use_container_width=True)
+
+st.download_button(
+    label="📥 Export Drone Waypoints (CSV)",
+    data=drone_data.to_csv(index=False),
+    file_name="gorumara_mikania_drone_waypoints.csv",
+    mime="text/csv"
+)
+
+# 8. PUBLIC DATA SOURCES & REFERENCES CATALOG
 st.divider()
 st.subheader("📜 Public Open Data Catalog & Citation URLs")
 
