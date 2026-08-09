@@ -80,6 +80,15 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 
 st.sidebar.divider()
+st.sidebar.warning("""
+**Disclaimer & Notice of Independent Research**
+
+1. **Non-Official Project:** This platform is purely a personal technical research project aimed at testing AI capabilities for nature and wildlife conservation.
+2. **No Authoritative Standing:** Nothing in this application represents official findings, legal claims, administrative critique, or mandatory operational guidelines for any state, national, or local wildlife authorities.
+3. **No Warranty / Liability:** All data layers, AI risk scores, and generated coordinates are provided "as-is" for analytical demonstration only. The creator assumes no legal liability or responsibility for actions taken based on this software.
+""")
+
+st.sidebar.divider()
 st.sidebar.subheader("Sensitivity Settings")
 sensitivity = st.sidebar.slider("Invasive Sensitivity Level", min_value=1, max_value=5, value=3)
 threshold = 0.25 - (sensitivity - 1) * 0.04
